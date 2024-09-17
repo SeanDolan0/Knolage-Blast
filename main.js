@@ -1,7 +1,6 @@
 // Import the piece matrices from an external module
 import { pieceMatrices } from "./modules/pieceMatrices.mjs";
 
-// Create a canvas element and append it to the document body
 const canvas = document.createElement("canvas");
 document.body.appendChild(canvas);
 const ctx = canvas.getContext("2d");
