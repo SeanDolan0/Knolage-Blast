@@ -9,6 +9,8 @@ const pieceSprite = new Image();
 pieceSprite.src = "./assets/B1.png";
 
 /** @type {number} */
+const LINE_CLEAR_DELAY = 20;
+/** @type {number} */
 const NUM_PIECES = 3;
 /** @type {number} */
 const GRID_SIZE = 8;
@@ -53,9 +55,6 @@ class Piece {
     }
     /** @returns {void} */
     draw() {
-        // ctx.strokeStyle = 'red';
-        // ctx.lineWidth = 4;
-        // ctx.strokeRect(this.x, this.y, this.width, this.height);
         this.matrix.forEach((row, dy) => {
             row.forEach((cell, dx) => {
                 if (cell) {
@@ -197,28 +196,27 @@ function doLineClears() {
     }
     if (!rows.length && !cols.length) return;
     runningAnimation = true;
-    const TIME_PER_TILE = 10;
     rows.forEach((row) => {
         for (let i = 0; i < GRID_SIZE; i++) {
             setTimeout(() => {
                 matrix[row][i] = 0;
                 redraw();
-            }, TIME_PER_TILE * (i + 1));
+            }, LINE_CLEAR_DELAY * (i + 1));
         }
         setTimeout(() => {
             runningAnimation = false;
-        }, TIME_PER_TILE * (GRID_SIZE + 1));
+        }, LINE_CLEAR_DELAY * (GRID_SIZE + 1));
     });
     cols.forEach((col) => {
         for (let i = 0; i < GRID_SIZE; i++) {
             setTimeout(() => {
                 matrix[i][col] = 0;
                 redraw();
-            }, TIME_PER_TILE * (i + 1));
+            }, LINE_CLEAR_DELAY * (i + 1));
         }
         setTimeout(() => {
             runningAnimation = false;
-        }, TIME_PER_TILE * (GRID_SIZE + 1));
+        }, LINE_CLEAR_DELAY * (GRID_SIZE + 1));
     });
 }
 
