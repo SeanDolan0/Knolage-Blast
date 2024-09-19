@@ -29,6 +29,8 @@ let isDragging = false;
 /** @property {number} x */
 /** @property {number} y */
 let dragOffset = { x: 0, y: 0 };
+/** @type {boolean} */
+let runningAnimation = false;
 
 class Piece {
     /**
@@ -173,6 +175,7 @@ function lockPiece(piece) {
             }
         });
     });
+    pieces = pieces.filter((piece) => piece !== currentPiece);
     doLineClears();
     regeneratePieces();
 }
@@ -192,22 +195,36 @@ function doLineClears() {
         }
         if (full_col) cols.push(x);
     }
+    if (!rows.length && !cols.length) return;
+    runningAnimation = true;
+    const TIME_PER_TILE = 10;
     rows.forEach((row) => {
-        matrix[row] = Array.from({ length: GRID_SIZE }, () => 0);
+        for (let i = 0; i < GRID_SIZE; i++) {
+            setTimeout(() => {
+                matrix[row][i] = 0;
+                redraw();
+            }, TIME_PER_TILE * (i + 1));
+        }
+        setTimeout(() => {
+            runningAnimation = false;
+        }, TIME_PER_TILE * (GRID_SIZE + 1));
     });
     cols.forEach((col) => {
-        for (let y = 0; y < GRID_SIZE; y++) {
-            matrix[y][col] = 0;
+        for (let i = 0; i < GRID_SIZE; i++) {
+            setTimeout(() => {
+                matrix[i][col] = 0;
+                redraw();
+            }, TIME_PER_TILE * (i + 1));
         }
+        setTimeout(() => {
+            runningAnimation = false;
+        }, TIME_PER_TILE * (GRID_SIZE + 1));
     });
 }
 
-/** @type {number} */
-let piecesPlaced = 0;
 /** @returns {void} */
 function regeneratePieces() {
-    if (++piecesPlaced >= NUM_PIECES) {
-        piecesPlaced = 0;
+    if (pieces.length == 0) {
         initializePieces();
         redraw();
     }
@@ -233,6 +250,29 @@ function isPointInPiece(x, y, piece) {
     return false;
 }
 
+/**
+    * @param {Piece} piece
+    * @returns {boolean}
+    */
+function emptySpaceForPiece(piece) {
+    const start = [piece.x, piece.y];
+    const xMax = GRID_SIZE - piece.matrix[0].length;
+    const yMax = GRID_SIZE - piece.matrix.length;
+    for (let dy = 0; dy <= yMax; dy++) {
+        for (let dx = 0; dx <= xMax; dx++) {
+            const x = gridX + PIECE_SIZE * dx;
+            const y = gridY + PIECE_SIZE * dy;
+            [piece.x, piece.y] = [x, y];
+            if (canPlacePieceOnGrid(piece)) { 
+                [piece.x, piece.y] = start;
+                return true;
+            }
+        }
+    }
+    [piece.x, piece.y] = start;
+    return false;
+}
+
 /** @param {MouseEvent} e */
 canvas.onmousedown = (e) => {
     const rect = canvas.getBoundingClientRect();
@@ -240,7 +280,7 @@ canvas.onmousedown = (e) => {
     const y = e.clientY - rect.top;
 
     currentPiece = pieces.find((piece) => isPointInPiece(x, y, piece));
-    if (currentPiece) {
+    if (currentPiece && !runningAnimation) {
         isDragging = true;
         dragOffset = { x: x - currentPiece.x, y: y - currentPiece.y };
     }
@@ -265,7 +305,9 @@ canvas.onmouseup = () => {
         if (canPlacePieceOnGrid(currentPiece)) {
             snapPieceToGrid(currentPiece);
             lockPiece(currentPiece);
-            pieces = pieces.filter((piece) => piece !== currentPiece);
+            if (!pieces.some((piece) => emptySpaceForPiece(piece))) {
+                console.log("GAME OVER");
+            }
         } else {
             currentPiece.resetPosition();
         }
