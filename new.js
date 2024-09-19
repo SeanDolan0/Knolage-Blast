@@ -298,13 +298,27 @@ canvas.onmousemove = (e) => {
     }
 }
 
+function gameOverAnimation() {
+    runningAnimation = true;
+    setTimeout(() => {
+        for (let y = 0; y < GRID_SIZE; y++) {
+            for (let x = 0; x < GRID_SIZE; x++) {
+                setTimeout(() => {
+                    matrix[y][x] = 1;
+                    redraw();
+                }, (x + y) * LINE_CLEAR_DELAY);
+            }
+        }
+    }, 300);
+}
+
 canvas.onmouseup = () => {
     if (isDragging && currentPiece) {
         if (canPlacePieceOnGrid(currentPiece)) {
             snapPieceToGrid(currentPiece);
             lockPiece(currentPiece);
             if (!pieces.some((piece) => emptySpaceForPiece(piece))) {
-                console.log("GAME OVER");
+                gameOverAnimation();
             }
         } else {
             currentPiece.resetPosition();
