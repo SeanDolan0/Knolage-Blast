@@ -1,5 +1,20 @@
-* {
-  margin: 0;
-  padding: 0;
-  overflow: hidden;
+body {
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+}
+
+canvas {
+    z-index: -1;
+}
+
+.score {
+    z-index: 3;
+    position: absolute;
+    left: 50%;
+    top: 10%;
+    transform: translate(-50%, -50%);
+
+    font-family: sans-serif;
+    font-size: 3.5em;
 }

@@ -1,15 +1,21 @@
 import { pieceMatrices } from './modules/pieceMatrices.mjs';
 
+const scoreDisplay = document.querySelector('.score');
+
 const canvas = document.querySelector('canvas');
 const ctx = canvas.getContext('2d');
 canvas.width = window.innerWidth;
 canvas.height = window.innerHeight;
 
 const pieceSprite = new Image();
-pieceSprite.src = "./assets/B1.png";
+pieceSprite.src = "./assets/tile.png";
 
 /** @type {number} */
+let score = 0;
+/** @type {number} */
 const LINE_CLEAR_DELAY = 20;
+/** @type {number} */
+const POINTS_PER_TILE = 10;
 /** @type {number} */
 const NUM_PIECES = 3;
 /** @type {number} */
@@ -129,6 +135,7 @@ function redraw() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     drawGrid();
     pieces.forEach((v, _) => {
+        if (v === null) return;
         v.draw();
     });
 }
@@ -174,7 +181,12 @@ function lockPiece(piece) {
             }
         });
     });
-    pieces = pieces.filter((piece) => piece !== currentPiece);
+    pieces.forEach((piece, i) => {
+        if (piece === currentPiece) {
+            pieces[i] = null;
+        }
+    });
+    console.log(pieces);
     doLineClears();
     regeneratePieces();
 }
@@ -201,6 +213,8 @@ function doLineClears() {
             setTimeout(() => {
                 matrix[row][i] = 0;
                 redraw();
+                score += POINTS_PER_TILE;
+                setScore(score);
             }, LINE_CLEAR_DELAY * (i + 1));
         }
         setTimeout(() => {
@@ -212,6 +226,8 @@ function doLineClears() {
             setTimeout(() => {
                 matrix[i][col] = 0;
                 redraw();
+                score += POINTS_PER_TILE;
+                setScore(score);
             }, LINE_CLEAR_DELAY * (i + 1));
         }
         setTimeout(() => {
@@ -222,7 +238,7 @@ function doLineClears() {
 
 /** @returns {void} */
 function regeneratePieces() {
-    if (pieces.length == 0) {
+    if (pieces[0] === null && pieces[1] === null && pieces[2] === null) {
         initializePieces();
         redraw();
     }
@@ -253,6 +269,7 @@ function isPointInPiece(x, y, piece) {
     * @returns {boolean}
     */
 function emptySpaceForPiece(piece) {
+    if (piece === null) return false;
     const start = [piece.x, piece.y];
     const xMax = GRID_SIZE - piece.matrix[0].length;
     const yMax = GRID_SIZE - piece.matrix.length;
@@ -312,6 +329,14 @@ function gameOverAnimation() {
     }, 300);
 }
 
+/**
+    * @param {number} score
+    * @returns {void}
+    */
+function setScore(score) {
+    scoreDisplay.innerText = score;
+}
+
 canvas.onmouseup = () => {
     if (isDragging && currentPiece) {
         if (canPlacePieceOnGrid(currentPiece)) {
@@ -328,8 +353,56 @@ canvas.onmouseup = () => {
     isDragging = false;
 }
 
+/** @param {KeyboardEvent} e */
+document.onkeydown = (e) => {
+    switch (e.key) {
+        case '1': { currentPiece = pieces[0]; break; }
+        case '2': { currentPiece = pieces[1]; break; }
+        case '3': { currentPiece = pieces[2]; break; }
+        case 'ArrowLeft': {
+            currentPiece.x -= PIECE_SIZE;
+            snapPieceToGrid(currentPiece);
+            redraw();
+            break;
+        }
+        case 'ArrowRight': {
+            currentPiece.x += PIECE_SIZE;
+            snapPieceToGrid(currentPiece);
+            redraw();
+            break;
+        }
+        case 'ArrowDown': {
+            currentPiece.y += PIECE_SIZE;
+            snapPieceToGrid(currentPiece);
+            redraw();
+            break;
+        }
+        case 'ArrowUp': {
+            currentPiece.y -= PIECE_SIZE;
+            snapPieceToGrid(currentPiece);
+            redraw();
+            break;
+        }
+        case 'Enter':  {
+            if (canPlacePieceOnGrid(currentPiece)) {
+                snapPieceToGrid(currentPiece);
+                lockPiece(currentPiece);
+                if (!pieces.some((piece) => emptySpaceForPiece(piece))) {
+                    gameOverAnimation();
+                }
+            } else {
+                currentPiece.resetPosition();
+            }
+            redraw();
+        }
+
+
+    }
+}
+
 window.onresize = resizeCanvas;
 
+setScore(score);
 pieceSprite.onload = () => {
     resizeCanvas();
     initializePieces();
