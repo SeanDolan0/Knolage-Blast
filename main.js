@@ -1,222 +1,337 @@
-// Import the piece matrices from an external module
-import { pieceMatrices } from "./modules/pieceMatrices.mjs";
+import { pieceMatrices } from './modules/pieceMatrices.mjs';
 
-const canvas = document.createElement("canvas");
-document.body.appendChild(canvas);
-const ctx = canvas.getContext("2d");
+const canvas = document.querySelector('canvas');
+const ctx = canvas.getContext('2d');
+canvas.width = window.innerWidth;
+canvas.height = window.innerHeight;
 
-// Load the image to represent the pieces
 const pieceSprite = new Image();
 pieceSprite.src = "./assets/B1.png";
 
-// Define constants for piece size, grid size, number of pieces, and spacing between pieces
-const PIECE_SIZE = 40,
-  GRID_SIZE = 8,
-  NUM_PIECES = 3,
-  SPACING = 10;
+/** @type {number} */
+const LINE_CLEAR_DELAY = 20;
+/** @type {number} */
+const NUM_PIECES = 3;
+/** @type {number} */
+const GRID_SIZE = 8;
+/** @type {number} */
+let PIECE_SIZE = 40;
+/** @type {number} */
+let SPACING = 10;
+/** @type {Piece[]} */
+let pieces = [];
+/** @type {Piece} */
+let currentPiece = null;
+/** @type {number[][]} */
+let matrix = Array.from({ length: GRID_SIZE }, () => Array(GRID_SIZE).fill(0));
+let [gridX, gridY] = [100, 100];
 
-// Define variables to manage the grid, pieces, dragging behavior, and piece placement
-let gridX,
-  gridY,
-  pieces = [],
-  currentPiece = null,
-  isDragging = false,
-  dragOffset = { x: 0, y: 0 },
-  piecesPlaced = 0;
-let gridMatrix = Array.from({ length: GRID_SIZE }, () => Array(GRID_SIZE).fill(0));
+/** @type {boolean} */
+let isDragging = false;
+/** @property {number} x */
+/** @property {number} y */
+let dragOffset = { x: 0, y: 0 };
+/** @type {boolean} */
+let runningAnimation = false;
 
-// Adjust the canvas size when the window is resized
+class Piece {
+    /**
+        * @param {number} x
+        * @param {number} y
+        * @param {number} width
+        * @param {number} height
+        * @param {number[][]} matrix
+        * @returns {void}
+        */
+    constructor(x, y, width, height, matrix) {
+        this.x = x;
+        this.y = y;
+        this.width = width;
+        this.height = height;
+        this.matrix = matrix;
+
+        this.originalX = x;
+        this.originalY = y;
+    }
+    /** @returns {void} */
+    draw() {
+        this.matrix.forEach((row, dy) => {
+            row.forEach((cell, dx) => {
+                if (cell) {
+                    ctx.drawImage(
+                        pieceSprite,
+                        this.x + dx * PIECE_SIZE,
+                        this.y + dy * PIECE_SIZE,
+                        PIECE_SIZE,
+                        PIECE_SIZE,
+                    );
+                }
+            });
+        });
+    }
+    /** @returns {void} */
+    resetPosition() {
+        [this.x, this.y] = [this.originalX, this.originalY];
+    }
+}
+
+/** @returns {void} */
 function resizeCanvas() {
-  canvas.width = window.innerWidth;
-  canvas.height = window.innerHeight;
-  gridX = (canvas.width - GRID_SIZE * PIECE_SIZE) / 2;
-  gridY = canvas.height * 0.2;
-  initializePieces(); // Initialize pieces once the canvas is resized
-  redraw(); // Redraw the entire canvas with the updated dimensions
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+    gridX = (canvas.width - GRID_SIZE * PIECE_SIZE) / 2;
+    redraw();
+    gridY = canvas.height * 0.2;
 }
 
-// Initialize the pieces below the grid, setting their position and size
+/** @returns {void} */
 function initializePieces() {
-  const gridBottom = gridY + GRID_SIZE * PIECE_SIZE;
-  const availableWidth = canvas.width * 0.6;
-  const pieceAreaTop = gridBottom + SPACING;
-  const pieceAreaHeight = canvas.height - pieceAreaTop - SPACING;
-  const effectivePieceSize = Math.min(
-    (availableWidth - (NUM_PIECES - 1) * SPACING) / NUM_PIECES,
-    pieceAreaHeight,
-    PIECE_SIZE * 4
-  );
-  const totalWidth = NUM_PIECES * effectivePieceSize + (NUM_PIECES - 1) * SPACING;
-  const startX = (canvas.width - totalWidth) / 2;
+    const gridBottom = gridY + GRID_SIZE * PIECE_SIZE;
+    const availableWidth = canvas.width * 0.6;
+    const pieceTop = gridBottom + SPACING;
+    const pieceMaxHeight = canvas.height - pieceTop - SPACING;
+    const effectivePieceSize = Math.min(
+        (availableWidth - (NUM_PIECES - 1) * SPACING) / NUM_PIECES,
+        pieceMaxHeight,
+        PIECE_SIZE * 4
+    );
+    const totalWidth = NUM_PIECES * effectivePieceSize + (NUM_PIECES - 1) * SPACING;
+    const startX = (canvas.width - totalWidth) / 2;
 
-  // Generate random pieces and position them below the grid
-  pieces = Array.from({ length: NUM_PIECES }, (_, i) => {
-    const pieceType = Object.keys(pieceMatrices)[Math.floor(Math.random() * Object.keys(pieceMatrices).length)];
-    const pieceMatrix = pieceMatrices[pieceType][Math.floor(Math.random() * pieceMatrices[pieceType].length)];
-    return {
-      pieceMatrix,
-      pieceX: startX + i * (effectivePieceSize + SPACING),
-      pieceY: pieceAreaTop + (pieceAreaHeight - effectivePieceSize) / 2,
-      pieceWidth: PIECE_SIZE * pieceMatrix[0].length,
-      pieceHeight: PIECE_SIZE * pieceMatrix.length,
-      type: pieceType,
-    };
-  });
-}
-
-// Draw the grid on the canvas
-function drawGrid() {
-  ctx.strokeStyle = "gray";
-  for (let i = 0; i < GRID_SIZE; i++) {
-    for (let j = 0; j < GRID_SIZE; j++) {
-      const x = gridX + j * PIECE_SIZE,
-        y = gridY + i * PIECE_SIZE;
-      ctx.strokeRect(x, y, PIECE_SIZE, PIECE_SIZE);
-      if (gridMatrix[i][j]) ctx.drawImage(pieceSprite, x, y, PIECE_SIZE, PIECE_SIZE); // Draw pieces in the grid if present
-    }
-  }
-}
-
-// Draw a piece on the canvas
-function drawPiece(piece) {
-  piece.pieceMatrix.forEach((row, i) => {
-    row.forEach((cell, j) => {
-      if (cell)
-        ctx.drawImage(
-          pieceSprite,
-          piece.pieceX + j * PIECE_SIZE,
-          piece.pieceY + i * PIECE_SIZE,
-          PIECE_SIZE,
-          PIECE_SIZE
+    pieces = Array.from({ length: NUM_PIECES }, (_, i) => {
+        const pieceType = Object.keys(pieceMatrices)[Math.floor(Math.random() * Object.keys(pieceMatrices).length)];
+        const pieceMatrix = pieceMatrices[pieceType][Math.floor(Math.random() * pieceMatrices[pieceType].length)];
+        let piece = new Piece(
+            startX + i * (effectivePieceSize + SPACING),
+            pieceTop + (pieceMaxHeight - effectivePieceSize) / 2,
+            PIECE_SIZE * pieceMatrix[0].length, PIECE_SIZE * pieceMatrix.length,
+            pieceMatrix,
         );
+        return piece;
     });
-  });
 }
 
-// Redraw the entire canvas including the grid and pieces
+/** @returns {void} */
+function drawGrid() {
+    ctx.strokeStyle = 'gray';
+    for (let dy = 0; dy < GRID_SIZE; dy++) {
+        for (let dx = 0; dx < GRID_SIZE; dx++) {
+            const x = gridX + dx * PIECE_SIZE;
+            const y = gridY + dy * PIECE_SIZE;
+            ctx.strokeRect(x, y, PIECE_SIZE, PIECE_SIZE);
+            if (matrix[dy][dx]) ctx.drawImage(pieceSprite, x, y, PIECE_SIZE, PIECE_SIZE);
+        }
+    }
+}
+
+/** @returns {void} */
 function redraw() {
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-  drawGrid();
-  pieces.forEach(drawPiece);
-}
-
-// Snap the piece to the nearest grid position after dragging
-function snapPieceToGrid(piece) {
-  piece.pieceX = Math.round((piece.pieceX - gridX) / PIECE_SIZE) * PIECE_SIZE + gridX;
-  piece.pieceY = Math.round((piece.pieceY - gridY) / PIECE_SIZE) * PIECE_SIZE + gridY;
-}
-
-// Check if a piece can be placed on the grid
-function canPlacePieceOnGrid(piece) {
-  const gridXIndex = Math.floor((piece.pieceX - gridX) / PIECE_SIZE);
-  const gridYIndex = Math.floor((piece.pieceY - gridY) / PIECE_SIZE);
-  return piece.pieceMatrix.every((row, i) =>
-    row.every((cell, j) => {
-      if (!cell) return true;
-      const x = gridXIndex + j,
-        y = gridYIndex + i;
-      return x >= 0 && x < GRID_SIZE && y >= 0 && y < GRID_SIZE && !gridMatrix[y][x];
-    })
-  );
-}
-
-// Store the piece in the grid matrix and remove it from the canvas
-function storePieceInMatrixAndDelete(piece) {
-  const gridXIndex = Math.floor((piece.pieceX - gridX) / PIECE_SIZE);
-  const gridYIndex = Math.floor((piece.pieceY - gridY) / PIECE_SIZE);
-  piece.pieceMatrix.forEach((row, i) => {
-    row.forEach((cell, j) => {
-      if (cell) gridMatrix[gridYIndex + i][gridXIndex + j] = 1; // Mark grid cells as filled
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    drawGrid();
+    pieces.forEach((v, _) => {
+        v.draw();
     });
-  });
-  clearFullRowsAndColumns(); // Clear any full rows or columns
-  checkAndRegeneratePieces(); // Check if new pieces need to be generated
 }
 
-// Clear full rows and columns in the grid
-function clearFullRowsAndColumns() {
-  gridMatrix = gridMatrix.filter((row) => row.some((cell) => !cell)); // Remove full rows
-  while (gridMatrix.length < GRID_SIZE) gridMatrix.unshift(Array(GRID_SIZE).fill(0)); // Add empty rows if needed
+/**
+    * @param {Piece} piece
+    * @returns {void}
+    */
+function snapPieceToGrid(piece) {
+    piece.x = Math.round((piece.x - gridX) / PIECE_SIZE) * PIECE_SIZE + gridX;
+    piece.y = Math.round((piece.y - gridY) / PIECE_SIZE) * PIECE_SIZE + gridY;
+}
 
-  // Clear full columns
-  for (let col = 0; col < GRID_SIZE; col++) {
-    if (gridMatrix.every((row) => row[col])) {
-      gridMatrix.forEach((row) => (row[col] = 0)); // Clear the column
+/**
+    * @param {Piece} piece
+    * @returns {boolean}
+    */
+function canPlacePieceOnGrid(piece) {
+    const gridXIndex = Math.round((piece.x - gridX) / PIECE_SIZE);
+    const gridYIndex = Math.round((piece.y - gridY) / PIECE_SIZE);
+    return piece.matrix.every((row, dy) => 
+        row.every((cell, dx) => {
+            if (!cell) return true;
+            const x = gridXIndex + dx;
+            const y = gridYIndex + dy;
+
+            return x >= 0 && x < GRID_SIZE && y >= 0 && y < GRID_SIZE && !matrix[y][x];
+        })
+    );
+}
+
+/**
+    * @param {Piece} piece
+    * @returns {void}
+    */
+function lockPiece(piece) {
+    const gridXIndex = Math.round((piece.x - gridX) / PIECE_SIZE);
+    const gridYIndex = Math.round((piece.y - gridY) / PIECE_SIZE);
+    piece.matrix.forEach((row, dy) => {
+        row.forEach((cell, dx) => {
+            if (cell) {
+                matrix[gridYIndex + dy][gridXIndex + dx] = 1;
+            }
+        });
+    });
+    pieces = pieces.filter((piece) => piece !== currentPiece);
+    doLineClears();
+    regeneratePieces();
+}
+
+/** @returns {void} */
+function doLineClears() {
+    const rows = [];
+    const cols = [];
+    matrix.forEach((row, j) => { if (!row.some((cell) => !cell)) { rows.push(j); } });
+    for (let x = 0; x < GRID_SIZE; x++) {
+        let full_col = true;
+        for (let y = 0; y < GRID_SIZE; y++) {
+            if (!matrix[y][x]) {
+                full_col = false;
+                break;
+            }
+        }
+        if (full_col) cols.push(x);
     }
-  }
-  redraw(); // Redraw the updated grid
+    if (!rows.length && !cols.length) return;
+    runningAnimation = true;
+    rows.forEach((row) => {
+        for (let i = 0; i < GRID_SIZE; i++) {
+            setTimeout(() => {
+                matrix[row][i] = 0;
+                redraw();
+            }, LINE_CLEAR_DELAY * (i + 1));
+        }
+        setTimeout(() => {
+            runningAnimation = false;
+        }, LINE_CLEAR_DELAY * (GRID_SIZE + 1));
+    });
+    cols.forEach((col) => {
+        for (let i = 0; i < GRID_SIZE; i++) {
+            setTimeout(() => {
+                matrix[i][col] = 0;
+                redraw();
+            }, LINE_CLEAR_DELAY * (i + 1));
+        }
+        setTimeout(() => {
+            runningAnimation = false;
+        }, LINE_CLEAR_DELAY * (GRID_SIZE + 1));
+    });
 }
 
-// Check if new pieces need to be generated and regenerate them if necessary
-function checkAndRegeneratePieces() {
-  if (++piecesPlaced >= NUM_PIECES) {
-    piecesPlaced = 0;
-    initializePieces(); // Regenerate new pieces
-    redraw(); // Redraw the canvas with new pieces
-  }
+/** @returns {void} */
+function regeneratePieces() {
+    if (pieces.length == 0) {
+        initializePieces();
+        redraw();
+    }
 }
 
-// Check if a point (x, y) is inside a specific piece
+/** 
+    * @param {number} x
+    * @param {number} y
+    * @param {Piece} piece
+    * @returns {boolean}
+    */
 function isPointInPiece(x, y, piece) {
-  if (
-    x >= piece.pieceX &&
-    x < piece.pieceX + piece.pieceWidth &&
-    y >= piece.pieceY &&
-    y < piece.pieceY + piece.pieceHeight
-  ) {
-    const i = Math.floor((y - piece.pieceY) / PIECE_SIZE);
-    const j = Math.floor((x - piece.pieceX) / PIECE_SIZE);
-    return piece.pieceMatrix[i] && piece.pieceMatrix[i][j]; // Check if the point is inside the piece matrix
-  }
-  return false;
+    if (
+        x >= piece.x &&
+        x < piece.x + piece.width &&
+        y >= piece.y &&
+        y < piece.y + piece.height
+    ) {
+        const i = Math.floor((y - piece.y) / PIECE_SIZE);
+        const j = Math.floor((x - piece.x) / PIECE_SIZE);
+        return piece.matrix[i] && piece.matrix[i][j];
+    }
+    return false;
 }
 
-// Event listener for when the mouse button is pressed
-canvas.addEventListener("mousedown", (e) => {
-  const rect = canvas.getBoundingClientRect();
-  const x = e.clientX - rect.left,
-    y = e.clientY - rect.top;
-  currentPiece = pieces.find((piece) => isPointInPiece(x, y, piece)); // Find the piece under the cursor
-  if (currentPiece) {
-    isDragging = true;
-    dragOffset = { x: x - currentPiece.pieceX, y: y - currentPiece.pieceY }; // Calculate drag offset
-  }
-});
-
-// Event listener for when the mouse is moved
-canvas.addEventListener("mousemove", (e) => {
-  if (isDragging && currentPiece) {
-    const rect = canvas.getBoundingClientRect();
-    currentPiece.pieceX = e.clientX - rect.left - dragOffset.x;
-    currentPiece.pieceY = e.clientY - rect.top - dragOffset.y;
-
-    // Constrain the piece within the canvas boundaries
-    currentPiece.pieceX = Math.max(0, Math.min(currentPiece.pieceX, canvas.width - currentPiece.pieceWidth));
-    currentPiece.pieceY = Math.max(0, Math.min(currentPiece.pieceY, canvas.height - currentPiece.pieceHeight));
-
-    redraw(); // Redraw while dragging
-  }
-});
-
-// Event listener for when the mouse button is released
-canvas.addEventListener("mouseup", () => {
-  if (isDragging && currentPiece) {
-    snapPieceToGrid(currentPiece); // Snap the piece to the grid
-    if (canPlacePieceOnGrid(currentPiece)) {
-      storePieceInMatrixAndDelete(currentPiece); // Store the piece if it can be placed
-      pieces = pieces.filter((piece) => piece !== currentPiece); // Remove the piece from the array
+/**
+    * @param {Piece} piece
+    * @returns {boolean}
+    */
+function emptySpaceForPiece(piece) {
+    const start = [piece.x, piece.y];
+    const xMax = GRID_SIZE - piece.matrix[0].length;
+    const yMax = GRID_SIZE - piece.matrix.length;
+    for (let dy = 0; dy <= yMax; dy++) {
+        for (let dx = 0; dx <= xMax; dx++) {
+            const x = gridX + PIECE_SIZE * dx;
+            const y = gridY + PIECE_SIZE * dy;
+            [piece.x, piece.y] = [x, y];
+            if (canPlacePieceOnGrid(piece)) { 
+                [piece.x, piece.y] = start;
+                return true;
+            }
+        }
     }
-    redraw(); // Redraw after the piece is placed
-  }
-  isDragging = false; // Stop dragging
-});
+    [piece.x, piece.y] = start;
+    return false;
+}
 
-// Event listener for window resize
-window.addEventListener("resize", resizeCanvas);
+/** @param {MouseEvent} e */
+canvas.onmousedown = (e) => {
+    const rect = canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
 
-// Once the piece sprite is loaded, resize the canvas and initialize the pieces
+    currentPiece = pieces.find((piece) => isPointInPiece(x, y, piece));
+    if (currentPiece && !runningAnimation) {
+        isDragging = true;
+        dragOffset = { x: x - currentPiece.x, y: y - currentPiece.y };
+    }
+}
+
+/** @param {MouseEvent} e */
+canvas.onmousemove = (e) => {
+    if (isDragging && currentPiece) {
+        const rect = canvas.getBoundingClientRect();
+        currentPiece.x = e.clientX - rect.left - dragOffset.x;
+        currentPiece.y = e.clientY - rect.top - dragOffset.y;
+
+        currentPiece.x = Math.max(0, Math.min(currentPiece.x, canvas.width - currentPiece.width));
+        currentPiece.y = Math.max(0, Math.min(currentPiece.y, canvas.height - currentPiece.height));
+
+        redraw();
+    }
+}
+
+function gameOverAnimation() {
+    runningAnimation = true;
+    setTimeout(() => {
+        for (let y = 0; y < GRID_SIZE; y++) {
+            for (let x = 0; x < GRID_SIZE; x++) {
+                setTimeout(() => {
+                    matrix[y][x] = 1;
+                    redraw();
+                }, (x + y) * LINE_CLEAR_DELAY);
+            }
+        }
+    }, 300);
+}
+
+canvas.onmouseup = () => {
+    if (isDragging && currentPiece) {
+        if (canPlacePieceOnGrid(currentPiece)) {
+            snapPieceToGrid(currentPiece);
+            lockPiece(currentPiece);
+            if (!pieces.some((piece) => emptySpaceForPiece(piece))) {
+                gameOverAnimation();
+            }
+        } else {
+            currentPiece.resetPosition();
+        }
+        redraw();
+    }
+    isDragging = false;
+}
+
+window.onresize = resizeCanvas;
+
 pieceSprite.onload = () => {
-  resizeCanvas();
-  initializePieces();
-  redraw();
-};
+    resizeCanvas();
+    initializePieces();
+    redraw();
+}
