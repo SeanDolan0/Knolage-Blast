@@ -40,6 +40,85 @@ let dragOffset = { x: 0, y: 0 };
 /** @type {boolean} */
 let runningAnimation = false;
 
+/**
+    * @param {number} r
+    * @param {number} g
+    * @param {number} b
+    * @returns {number[3]}
+    */
+function rgbToHsl(r, g, b) {
+    r /= 255; g /= 255; b /= 255;
+    const max = Math.max(r, g, b);
+    const min = Math.min(r, g, b);
+    let h, s, l = (max + min) / 2;
+
+    if (max === min) {
+        h = s = 0; // achromatic
+    } else {
+        const d = max - min;
+        s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+        switch (max) {
+            case r: h = (g - b) / d + (g < b ? 6 : 0); break;
+            case g: h = (b - r) / d + 2; break;
+            case b: h = (r - g) / d + 4; break;
+        }
+        h /= 6;
+    }
+
+    return [h * 360, s * 100, l * 100];
+}
+
+/**
+    * @param {number} h
+    * @param {number} s
+    * @param {number} l
+    * @returns {number[3]}
+    */
+function hslToRgb(h, s, l) {
+    h /= 360; s /= 100; l /= 100;
+    let r, g, b;
+
+    if (s === 0) {
+        r = g = b = l; // achromatic
+    } else {
+        const hue2rgb = (p, q, t) => {
+            if (t < 0) t += 1;
+            if (t > 1) t -= 1;
+            if (t < 1/6) return p + (q - p) * 6 * t;
+            if (t < 1/2) return q;
+            if (t < 2/3) return p + (q - p) * (2/3 - t) * 6;
+            return p;
+        };
+
+        const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+        const p = 2 * l - q;
+        r = hue2rgb(p, q, h + 1/3);
+        g = hue2rgb(p, q, h);
+        b = hue2rgb(p, q, h - 1/3);
+    }
+
+    return [Math.round(r * 255), Math.round(g * 255), Math.round(b * 255)];
+}
+
+
+/**
+    * @returns {CanvasImageSource}
+    */
+function randomPieceImage() {
+    const fakeCanvas = document.createElement('canvas');
+    [fakeCanvas.width, fakeCanvas.height] = [pieceSprite.width, pieceSprite.height];
+    fakeCanvas.getContext('2d').drawImage(pieceSprite, 0, 0, fakeCanvas.width, fakeCanvas.height);
+    let image = fakeCanvas.getContext('2d').getImageData(0, 0, fakeCanvas.width, fakeCanvas.height);
+    for (let i = 0; i < image.data.length; i += 4) {
+        let r = image.data[i];
+        let g = image.data[i + 1];
+        let b = image.data[i + 2];
+        
+        image.data[i] = (r + 900) % 256;
+    }
+    return image;
+}
+
 class Piece {
     /**
         * @param {number} x
@@ -58,6 +137,8 @@ class Piece {
 
         this.originalX = x;
         this.originalY = y;
+
+        this.pieceImage = randomPieceImage();
     }
     /** @returns {void} */
     draw() {
@@ -65,7 +146,7 @@ class Piece {
             row.forEach((cell, dx) => {
                 if (cell) {
                     ctx.drawImage(
-                        pieceSprite,
+                        this.pieceImage,
                         this.x + dx * PIECE_SIZE,
                         this.y + dy * PIECE_SIZE,
                         PIECE_SIZE,
