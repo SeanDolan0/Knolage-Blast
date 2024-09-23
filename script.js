@@ -251,6 +251,7 @@ function regeneratePieces() {
     * @returns {boolean}
     */
 function isPointInPiece(x, y, piece) {
+    if (!piece) return false;
     if (
         x >= piece.x &&
         x < piece.x + piece.width &&
