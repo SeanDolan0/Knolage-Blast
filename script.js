@@ -3,6 +3,7 @@ import {
   addQuestion,
   getRandomQuestion,
   popupRandom,
+  checkResponse,
 } from "./modules/quiz.mjs";
 
 const scoreDisplay = document.querySelector(".score");
@@ -44,6 +45,15 @@ let isDragging = false;
 let dragOffset = { x: 0, y: 0 };
 /** @type {boolean} */
 let runningAnimation = false;
+
+let piecesPlaced = 0;
+
+/**
+ * @param {boolean} status
+ */
+export function setAnimationStatus(status) {
+  runningAnimation = status;
+}
 
 /**
  * @param {number} r
@@ -245,7 +255,7 @@ function drawGrid() {
 }
 
 /** @returns {void} */
-function redraw() {
+export function redraw() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   drawGrid();
   pieces.forEach((v, _) => {
@@ -304,6 +314,10 @@ function lockPiece(piece) {
   });
   doLineClears();
   regeneratePieces();
+  piecesPlaced++;
+  if (piecesPlaced % 8 == 0) {
+    popupRandom();
+  }
 }
 
 /** @returns {void} */
@@ -440,7 +454,7 @@ canvas.onmousemove = (e) => {
   }
 };
 
-function gameOverAnimation() {
+export function gameOverAnimation() {
   runningAnimation = true;
   setTimeout(() => {
     for (let y = 0; y < GRID_SIZE; y++) {
@@ -468,7 +482,7 @@ const MAX_UPDATES = 10;
  * @param {number} ds
  * @returns {void}
  */
-function addScore(ds) {
+export function addScore(ds) {
   let dt = MAX_SCORE_TIME / MAX_UPDATES;
   let ds_dt = ds / MAX_UPDATES;
   for (let i = 0; i < MAX_UPDATES; i++) {
@@ -492,6 +506,7 @@ canvas.onmouseup = () => {
       addScore(numTiles);
       snapPieceToGrid(currentPiece);
       lockPiece(currentPiece);
+      updateQuestionStatus();
       if (!pieces.some((piece) => emptySpaceForPiece(piece))) {
         gameOverAnimation();
       }
@@ -505,6 +520,7 @@ canvas.onmouseup = () => {
 
 /** @param {KeyboardEvent} e */
 document.onkeydown = (e) => {
+  if (runningAnimation) return;
   switch (e.key) {
     case "1": {
       currentPiece = pieces[0];
@@ -557,6 +573,11 @@ document.onkeydown = (e) => {
   }
 };
 
+const questionStatus = document.querySelector(".question-status");
+function updateQuestionStatus() {
+  console.log(questionStatus);
+}
+
 window.onresize = resizeCanvas;
 
 setScore(score);
@@ -564,7 +585,6 @@ pieceSprite.onload = () => {
   resizeCanvas();
   initializePieces();
   redraw();
-  popupRandom();
 };
 
 addQuestion("How many beats are in 4/4?", "4", ["16", "8", "2"]);
