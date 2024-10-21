@@ -1,3 +1,8 @@
+const card = document.querySelector(".question");
+const gameplay = document.querySelector(".gameplay");
+const canvas = document.querySelector("canvas");
+const ctx = canvas.getContext("2d");
+
 export class Question {
   /**
    * @param {string} question
@@ -30,4 +35,21 @@ export function addQuestion(question, answer, incorrect) {
  */
 export function getRandomQuestion() {
   return questions[Math.floor(Math.random() * questions.length)];
+}
+
+/**
+ * @returns {void}
+ */
+export function popupRandom() {
+  const question = getRandomQuestion();
+  const list = [...question.incorrect, question.answer]
+    .map((value) => ({ value, sort: Math.random() }))
+    .sort((a, b) => a.sort - b.sort)
+    .map(({ value }) => value);
+  card.innerText =
+    question.question +
+    "\n" +
+    list.map((x, i) => (i + 1).toString() + ". " + x).join("\n");
+  card.style.visibility = "visible";
+  gameplay.style.filter = "blur(8px)";
 }

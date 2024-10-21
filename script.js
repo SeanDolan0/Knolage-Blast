@@ -1,5 +1,9 @@
 import { pieceMatrices } from "./modules/pieceMatrices.mjs";
-import { addQuestion, getRandomQuestion } from "./modules/quiz.mjs";
+import {
+  addQuestion,
+  getRandomQuestion,
+  popupRandom,
+} from "./modules/quiz.mjs";
 
 const scoreDisplay = document.querySelector(".score");
 
@@ -560,6 +564,7 @@ pieceSprite.onload = () => {
   resizeCanvas();
   initializePieces();
   redraw();
+  popupRandom();
 };
 
 addQuestion("How many beats are in 4/4?", "4", ["16", "8", "2"]);
@@ -569,6 +574,3 @@ addQuestion(
   "75%",
   ["25%", "50%", "100%"]
 );
-
-const questionBox = document.querySelector(".question");
-questionBox.innerText = getRandomQuestion().question;
