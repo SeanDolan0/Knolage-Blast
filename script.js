@@ -1,10 +1,5 @@
 import { pieceMatrices } from "./modules/pieceMatrices.mjs";
-import {
-  addQuestion,
-  getRandomQuestion,
-  popupRandom,
-  checkResponse,
-} from "./modules/quiz.mjs";
+import { addQuestion, getRandomQuestion, popupRandom, checkResponse } from "./modules/quiz.mjs";
 
 const scoreDisplay = document.querySelector(".score");
 
@@ -132,16 +127,9 @@ function hslToRgb(h, s, l) {
  */
 function randomPieceImage() {
   const fakeCanvas = document.createElement("canvas");
-  [fakeCanvas.width, fakeCanvas.height] = [
-    pieceSprite.width,
-    pieceSprite.height,
-  ];
-  fakeCanvas
-    .getContext("2d")
-    .drawImage(pieceSprite, 0, 0, fakeCanvas.width, fakeCanvas.height);
-  let image = fakeCanvas
-    .getContext("2d")
-    .getImageData(0, 0, fakeCanvas.width, fakeCanvas.height);
+  [fakeCanvas.width, fakeCanvas.height] = [pieceSprite.width, pieceSprite.height];
+  fakeCanvas.getContext("2d").drawImage(pieceSprite, 0, 0, fakeCanvas.width, fakeCanvas.height);
+  let image = fakeCanvas.getContext("2d").getImageData(0, 0, fakeCanvas.width, fakeCanvas.height);
   for (let i = 0; i < image.data.length; i += 4) {
     let r = image.data[i];
     let g = image.data[i + 1];
@@ -216,19 +204,12 @@ function initializePieces() {
     pieceMaxHeight,
     PIECE_SIZE * 4
   );
-  const totalWidth =
-    NUM_PIECES * effectivePieceSize + (NUM_PIECES - 1) * SPACING;
+  const totalWidth = NUM_PIECES * effectivePieceSize + (NUM_PIECES - 1) * SPACING;
   const startX = (canvas.width - totalWidth) / 2;
 
   pieces = Array.from({ length: NUM_PIECES }, (_, i) => {
-    const pieceType =
-      Object.keys(pieceMatrices)[
-        Math.floor(Math.random() * Object.keys(pieceMatrices).length)
-      ];
-    const pieceMatrix =
-      pieceMatrices[pieceType][
-        Math.floor(Math.random() * pieceMatrices[pieceType].length)
-      ];
+    const pieceType = Object.keys(pieceMatrices)[Math.floor(Math.random() * Object.keys(pieceMatrices).length)];
+    const pieceMatrix = pieceMatrices[pieceType][Math.floor(Math.random() * pieceMatrices[pieceType].length)];
     let piece = new Piece(
       startX + i * (effectivePieceSize + SPACING),
       pieceTop + (pieceMaxHeight - effectivePieceSize) / 2,
@@ -248,8 +229,7 @@ function drawGrid() {
       const x = gridX + dx * PIECE_SIZE;
       const y = gridY + dy * PIECE_SIZE;
       ctx.strokeRect(x, y, PIECE_SIZE, PIECE_SIZE);
-      if (matrix[dy][dx])
-        ctx.drawImage(pieceSprite, x, y, PIECE_SIZE, PIECE_SIZE);
+      if (matrix[dy][dx]) ctx.drawImage(pieceSprite, x, y, PIECE_SIZE, PIECE_SIZE);
     }
   }
 }
@@ -286,9 +266,7 @@ function canPlacePieceOnGrid(piece) {
       const x = gridXIndex + dx;
       const y = gridYIndex + dy;
 
-      return (
-        x >= 0 && x < GRID_SIZE && y >= 0 && y < GRID_SIZE && !matrix[y][x]
-      );
+      return x >= 0 && x < GRID_SIZE && y >= 0 && y < GRID_SIZE && !matrix[y][x];
     })
   );
 }
@@ -384,12 +362,7 @@ function regeneratePieces() {
  */
 function isPointInPiece(x, y, piece) {
   if (!piece) return false;
-  if (
-    x >= piece.x &&
-    x < piece.x + piece.width &&
-    y >= piece.y &&
-    y < piece.y + piece.height
-  ) {
+  if (x >= piece.x && x < piece.x + piece.width && y >= piece.y && y < piece.y + piece.height) {
     const i = Math.floor((y - piece.y) / PIECE_SIZE);
     const j = Math.floor((x - piece.x) / PIECE_SIZE);
     return piece.matrix[i] && piece.matrix[i][j];
@@ -441,14 +414,8 @@ canvas.onmousemove = (e) => {
     currentPiece.x = e.clientX - rect.left - dragOffset.x;
     currentPiece.y = e.clientY - rect.top - dragOffset.y;
 
-    currentPiece.x = Math.max(
-      0,
-      Math.min(currentPiece.x, canvas.width - currentPiece.width)
-    );
-    currentPiece.y = Math.max(
-      0,
-      Math.min(currentPiece.y, canvas.height - currentPiece.height)
-    );
+    currentPiece.x = Math.max(0, Math.min(currentPiece.x, canvas.width - currentPiece.width));
+    currentPiece.y = Math.max(0, Math.min(currentPiece.y, canvas.height - currentPiece.height));
 
     redraw();
   }
@@ -587,10 +554,18 @@ pieceSprite.onload = () => {
   redraw();
 };
 
-addQuestion("How many beats are in 4/4?", "4", ["16", "8", "2"]);
-addQuestion("What is the tenth decimal digit of Pi?", "5", ["9", "1", "6"]);
+addQuestion("Which part of the brain is primarily responsible for processing emotions?", "Amygdala", [
+  "Cerebellum",
+  "Hippocampus",
+  "Thalamus",
+]);
+addQuestion("What is the term for the process by which a conditioned response gradually disappears?", "Extinction", [
+  "Habituation",
+  "Sensitization",
+  "Spontaneous recovery",
+]);
 addQuestion(
-  "Roughly what percent of a note's length should be played if it has an accent?",
-  "75%",
-  ["25%", "50%", "100%"]
+  "Which psychological perspective focuses on the role of unconscious drives and childhood experiences?",
+  "Psychodynamic",
+  ["Behavioral", "Cognitive ", "Humanistic"]
 );
