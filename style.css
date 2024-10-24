@@ -59,3 +59,9 @@ canvas {
               user-select: none; /* Non-prefixed version, currently
                                     supported by Chrome, Edge, Opera and Firefox */
 }
+
+.status {
+    position: absolute;
+    left: 30%;
+    width: 200px;
+}

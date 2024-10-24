@@ -49,7 +49,7 @@ let correctIndex = -1;
  * @returns {void}
  */
 export function popupRandom() {
-  card.style.background = "#ffffff";
+  card.style.background = "#ffffffa0";
   setAnimationStatus(true);
   const question = getRandomQuestion();
   const list = [...question.incorrect, question.answer]
@@ -87,7 +87,7 @@ export function popupRandom() {
 }
 
 function closePopup(correct) {
-  card.style.background = correct ? "#00ff00" : "#ff0000";
+  card.style.background = correct ? "#00ff00a0" : "#ff0000a0";
   setTimeout(() => {
     gameplay.forEach((x) => {
       x.classList.remove("blurred");
